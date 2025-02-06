@@ -42,8 +42,8 @@ contract SimpleExecutionValidator is IValidator {
 
     function validateUserOp(
         PackedUserOperation calldata userOp,
-        bytes32 //  userOpHash
-    ) external pure override returns (uint256 validationCode) {
+        bytes32 userOpHash
+    ) external override returns (uint256 validationCode) {
         // get the function selector that will be called by EntryPoint
         // bytes4 execFunction = bytes4(userOp.callData[:4]);
 
@@ -55,6 +55,12 @@ contract SimpleExecutionValidator is IValidator {
         } else if (callType == CALLTYPE_SINGLE) {
             executionCalldata.decodeSingle();
         }
+         require(
+            _lastTxnTimestamp[sender] == 0 ||
+                (block.timestamp - _lastTxnTimestamp[sender]) > 3 minutes,
+            "Error: Must wait at least 3 minutes before signature can be considered valid"
+        );
+        _lastTxnTimestamp[sender] = block.timestamp;
         return VALIDATION_SUCCESS;
     }
 
@@ -100,12 +106,6 @@ contract SimpleExecutionValidator is IValidator {
     ) external view override returns (bytes4) {
         bytes4 magic = 0x1626ba7e;
         require(recoverSigner(hash, signature) == sender, "INVALID_SIGNATURE");
-        require(
-            _lastTxnTimestamp[sender] == 0 ||
-                (block.timestamp - _lastTxnTimestamp[sender]) > 3 minutes,
-            "Error: Must wait at least 3 minutes before signature can be considered valid"
-        );
-        _lastTxnTimestamp[sender] = block.tmestamp;
         return magic;
     }
 }

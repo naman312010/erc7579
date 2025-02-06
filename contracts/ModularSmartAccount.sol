@@ -221,6 +221,46 @@ contract ModularSmartAccount is
             );
     }
 
+    function validateUserOp(
+        PackedUserOperation memory userOp,
+        bytes32 userOpHash,
+        uint256 missingAccountFunds
+    )
+        external
+        payable
+        virtual
+        onlyEntryPoint
+        payPrefund(missingAccountFunds)
+        returns (uint256 validSignature)
+    {
+        address validator;
+        // @notice validator encoding in nonce is just an example!
+        // @notice this is not part of the standard!
+        // Account Vendors may choose any other way to implement validator selection
+        uint256 nonce = userOp.nonce;
+        assembly {
+            validator := shr(96, nonce)
+        }
+
+        // check if validator is enabled. If not terminate the validation phase.
+        if (!_isValidatorInstalled(validator)) {
+            if (!isAlreadyInitialized()) {
+                address signer =
+                    ECDSA.recover(userOpHash.toEthSignedMessageHash(), userOp.signature);
+
+                if (signer != address(this)) {
+                    return VALIDATION_FAILED;
+                }
+                return VALIDATION_SUCCESS;
+            } else {
+                return VALIDATION_FAILED;
+            }
+        } else {
+            // bubble up the return value of the validator module
+            validSignature = IValidator(validator).validateUserOp(userOp, userOpHash);
+        }
+    }
+
     /**
      * @dev installs a Module of a certain type on the smart account
      * @dev Implement Authorization control of your chosing
