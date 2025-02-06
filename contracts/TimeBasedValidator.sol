@@ -40,6 +40,18 @@ contract SimpleExecutionValidator is IValidator {
         return moduleTypeId == MODULE_TYPE_VALIDATOR;
     }
 
+    function _checkThreeMins(address sender) internal view returns (bool) {
+        if (
+            _lastTxnTimestamp[sender] == 0 ||
+            (block.timestamp - _lastTxnTimestamp[sender]) > 3 minutes
+        ) return true;
+        else return false;
+    }
+
+    function _updateLastTxn(address sender) internal {
+        _lastTxnTimestamp[sender] = block.timestamp;
+    }
+
     function validateUserOp(
         PackedUserOperation calldata userOp,
         bytes32 userOpHash
@@ -55,12 +67,7 @@ contract SimpleExecutionValidator is IValidator {
         } else if (callType == CALLTYPE_SINGLE) {
             executionCalldata.decodeSingle();
         }
-         require(
-            _lastTxnTimestamp[sender] == 0 ||
-                (block.timestamp - _lastTxnTimestamp[sender]) > 3 minutes,
-            "Error: Must wait at least 3 minutes before signature can be considered valid"
-        );
-        _lastTxnTimestamp[sender] = block.timestamp;
+        fejmikfm
         return VALIDATION_SUCCESS;
     }
 
