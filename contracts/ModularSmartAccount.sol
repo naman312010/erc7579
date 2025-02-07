@@ -18,6 +18,7 @@ contract ModularSmartAccount is
     ExecutionHelper
 {
 
+    address factory;
 
     // Error thrown when an unsupported ModuleType is requested
     error UnsupportedModuleType(uint256 moduleTypeId);
@@ -36,6 +37,11 @@ contract ModularSmartAccount is
 
     using SentinelListLib for SentinelListLib.SentinelList;
 
+    modifier onlyFactory() {
+        require(msg.sender == factory);
+        _;
+    }
+
     /**
      * @dev Initializes the account. Function might be called directly, or by a Factory
      * @param data. encoded data that can be used during the initialization phase
@@ -50,21 +56,10 @@ contract ModularSmartAccount is
         // checks if already initialized and reverts before setting the state to initialized
         _initModuleManager();
 
-        // bootstrap the account
-        (address bootstrap, bytes memory bootstrapCall) = abi.decode(data, (address, bytes));
-        _initAccount(bootstrap, bootstrapCall);
-    }
+        factory = msg.sender;
 
-    /**
-     * @dev Bootstrap function to initialize the account
-     * @param bootstrap. address of the bootstrap contract,
-     * @param bootstrapCall. encoded data that can be used during the initialization phase
-     */
-    function _initAccount(address bootstrap, bytes memory bootstrapCall) private {
-        // this is just implemented for demonstration purposes. You can use any other initialization
-        // logic here.
-        (bool success,) = bootstrap.delegatecall(bootstrapCall);
-        if (!success) revert();
+        // bootstrap the account, if need be
+        //(address bootstrap, bytes memory bootstrapCall) = abi.decode(data, (address, bytes));
     }
 
     bytes32 constant INIT_SLOT = keccak256(
@@ -261,7 +256,7 @@ contract ModularSmartAccount is
         uint256 moduleTypeId,
         address module,
         bytes calldata initData
-    ) external payable {
+    ) external onlyFactory payable {
         if (!IModule(module).isModuleType(moduleTypeId))
             revert MismatchModuleTypeId(moduleTypeId);
 
@@ -287,7 +282,7 @@ contract ModularSmartAccount is
         uint256 moduleTypeId,
         address module,
         bytes calldata deInitData
-    ) external payable {
+    ) external onlyFactory payable {
         if (moduleTypeId == MODULE_TYPE_VALIDATOR) {
             _uninstallValidator(module, deInitData);
         } else if (moduleTypeId == MODULE_TYPE_EXECUTOR) {
