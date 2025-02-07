@@ -7,8 +7,9 @@ import "../lib/ModeLib.sol";
 import "../lib/ExecutionLib.sol";
 import "./AccountBase.sol";
 import {ECDSA} from "solady/src/utils/ECDSA.sol";
+import "./ModularSmartAccount.sol";
 
-contract SimpleExecutionValidator is IValidator, AccountBase {
+contract TimeBasedValidator is IValidator, AccountBase {
     using ExecutionLib for bytes;
     using ECDSA for bytes32;
 
@@ -55,32 +56,24 @@ contract SimpleExecutionValidator is IValidator, AccountBase {
         _lastTxnTimestamp[sender] = block.timestamp;
     }
 
+// made only callable by a modular smart account
     function validateUserOp(
         PackedUserOperation memory userOp,
         bytes32 userOpHash
     ) external returns (uint256) {
+        require(isInitialized(msg.sender), "Smart account not initialized");
 
-        require(_checkThreeMins(msg.sender), "3MINSERROR: Please wait atleast 3 minutes before making another transaction");
-        address validator;
-        // @notice validator encoding in nonce is just an example!
-        // @notice this is not part of the standard!
-        // Account Vendors may choose any other way to implement validator selection
-        uint256 nonce = userOp.nonce;
-        assembly {
-            validator := shr(96, nonce)
-        }
-
-        // check if validator is enabled. If not terminate the validation phase.
+        require(_checkThreeMins(userOp.sender), "3MINSERROR: Please wait atleast 3 minutes before making another transaction");
 
         address signer = ECDSA.recover(
             userOpHash.toEthSignedMessageHash(),
             userOp.signature
         );
 
-        if (signer != msg.sender) {
+        if (signer != userOp.sender) {
             return VALIDATION_FAILED;
         }
-        _updateLastTxn(msg.sender);
+        _updateLastTxn(userOp.sender);
         return VALIDATION_SUCCESS;
     }
 
