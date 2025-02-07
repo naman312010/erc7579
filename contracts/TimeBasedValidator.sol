@@ -46,7 +46,7 @@ contract SimpleExecutionValidator is IValidator, AccountBase {
     function _checkThreeMins(address sender) internal view returns (bool) {
         if (
             _lastTxnTimestamp[sender] == 0 ||
-            (block.timestamp - _lastTxnTimestamp[sender]) > 3 minutes
+            (block.timestamp - _lastTxnTimestamp[sender]) >= 3 minutes
         ) return true;
         else return false;
     }
@@ -59,6 +59,8 @@ contract SimpleExecutionValidator is IValidator, AccountBase {
         PackedUserOperation memory userOp,
         bytes32 userOpHash
     ) external returns (uint256) {
+
+        require(_checkThreeMins(msg.sender), "3MINSERROR: Please wait atleast 3 minutes before making another transaction");
         address validator;
         // @notice validator encoding in nonce is just an example!
         // @notice this is not part of the standard!
@@ -78,6 +80,7 @@ contract SimpleExecutionValidator is IValidator, AccountBase {
         if (signer != msg.sender) {
             return VALIDATION_FAILED;
         }
+        _updateLastTxn(msg.sender);
         return VALIDATION_SUCCESS;
     }
 
