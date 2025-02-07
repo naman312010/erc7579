@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@rhinestone/sentinellist": "github:rhinestonewtf/sentinellist",
-    "accountabstraction": "github:eth-infinitism/account-abstraction#develop"
+    "accountabstraction": "github:eth-infinitism/account-abstraction#develop",
+    "solady": "^0.1.6"
   }
 }

@@ -1,13 +1,5 @@
-# Sample Hardhat Project
+# ERC7579 minimum implementation (WIP)
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.
+An attempt to implement upgradeable modular smart accounts based on ERC7579
 
-Try running some of the following tasks:
-
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat ignition deploy ./ignition/modules/Lock.ts
-```
+Untested, and based on [ERC7579 reference implementation](https://github.com/erc7579/erc7579-implementation)

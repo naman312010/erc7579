@@ -3,13 +3,13 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/IERC7579Account.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-// import "../interfaces/IValidator.sol"; // Interface for custom validator module
 import "../interfaces/IERC7579Module.sol";
 import {ModuleManager} from "./ModuleManager.sol";
 import "./ExecutionHelper.sol";
 import "../lib/ModeLib.sol";
 import {ExecutionLib} from "../lib/ExecutionLib.sol";
 import {SentinelListLib, SENTINEL} from "@rhinestone/sentinellist/src/SentinelList.sol";
+import { ECDSA } from "solady/src/utils/ECDSA.sol";
 
 contract ModularSmartAccount is
     Initializable,
@@ -32,6 +32,7 @@ contract ModularSmartAccount is
 
     using ModeLib for ModeCode;
     using ExecutionLib for bytes;
+    using ECDSA for bytes32;
 
     using SentinelListLib for SentinelListLib.SentinelList;
 
@@ -223,14 +224,11 @@ contract ModularSmartAccount is
 
     function validateUserOp(
         PackedUserOperation memory userOp,
-        bytes32 userOpHash,
-        uint256 missingAccountFunds
+        bytes32 userOpHash
     )
         external
         payable
-        virtual
         onlyEntryPoint
-        payPrefund(missingAccountFunds)
         returns (uint256 validSignature)
     {
         address validator;
@@ -244,17 +242,7 @@ contract ModularSmartAccount is
 
         // check if validator is enabled. If not terminate the validation phase.
         if (!_isValidatorInstalled(validator)) {
-            if (!isAlreadyInitialized()) {
-                address signer =
-                    ECDSA.recover(userOpHash.toEthSignedMessageHash(), userOp.signature);
-
-                if (signer != address(this)) {
-                    return VALIDATION_FAILED;
-                }
-                return VALIDATION_SUCCESS;
-            } else {
-                return VALIDATION_FAILED;
-            }
+            revert("VALIDATOR_MODULE_NOT_INSTALLED");
         } else {
             // bubble up the return value of the validator module
             validSignature = IValidator(validator).validateUserOp(userOp, userOpHash);

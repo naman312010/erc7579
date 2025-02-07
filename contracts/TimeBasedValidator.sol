@@ -5,9 +5,12 @@ import "../interfaces/IERC7579Account.sol";
 import "../interfaces/IERC7579Module.sol";
 import "../lib/ModeLib.sol";
 import "../lib/ExecutionLib.sol";
+import "./AccountBase.sol";
+import {ECDSA} from "solady/src/utils/ECDSA.sol";
 
-contract SimpleExecutionValidator is IValidator {
+contract SimpleExecutionValidator is IValidator, AccountBase {
     using ExecutionLib for bytes;
+    using ECDSA for bytes32;
 
     error InvalidExec();
 
@@ -53,21 +56,28 @@ contract SimpleExecutionValidator is IValidator {
     }
 
     function validateUserOp(
-        PackedUserOperation calldata userOp,
+        PackedUserOperation memory userOp,
         bytes32 userOpHash
-    ) external override returns (uint256 validationCode) {
-        // get the function selector that will be called by EntryPoint
-        // bytes4 execFunction = bytes4(userOp.callData[:4]);
-
-        // get the mode
-        CallType callType = CallType.wrap(bytes1(userOp.callData[4]));
-        bytes calldata executionCalldata = userOp.callData[36:];
-        if (callType == CALLTYPE_BATCH) {
-            executionCalldata.decodeBatch();
-        } else if (callType == CALLTYPE_SINGLE) {
-            executionCalldata.decodeSingle();
+    ) external returns (uint256) {
+        address validator;
+        // @notice validator encoding in nonce is just an example!
+        // @notice this is not part of the standard!
+        // Account Vendors may choose any other way to implement validator selection
+        uint256 nonce = userOp.nonce;
+        assembly {
+            validator := shr(96, nonce)
         }
-        fejmikfm
+
+        // check if validator is enabled. If not terminate the validation phase.
+
+        address signer = ECDSA.recover(
+            userOpHash.toEthSignedMessageHash(),
+            userOp.signature
+        );
+
+        if (signer != msg.sender) {
+            return VALIDATION_FAILED;
+        }
         return VALIDATION_SUCCESS;
     }
 
@@ -103,7 +113,7 @@ contract SimpleExecutionValidator is IValidator {
             v := byte(0, mload(add(sig, 96)))
         }
 
-        // implicitly return (r, s, v)
+        // implicitly returning (r, s, v)
     }
 
     function isValidSignatureWithSender(
