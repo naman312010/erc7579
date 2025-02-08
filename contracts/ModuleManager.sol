@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 import { SentinelListLib, SENTINEL } from "@rhinestone/sentinellist/src/SentinelList.sol";
 import {
     CallType, CALLTYPE_SINGLE, CALLTYPE_DELEGATECALL, CALLTYPE_STATIC
 } from "../lib/ModeLib.sol";
-import { AccountBase } from "./AccountBase.sol";
 import "../interfaces/IERC7579Module.sol";
 import "@openzeppelin/contracts/interfaces/IERC165.sol";
 import "./Receiver.sol";
@@ -17,7 +16,7 @@ import "./Receiver.sol";
  * @dev it uses SentinelList to manage the linked list of modules
  * NOTE: the linked list is just an example. accounts may implement this differently
  */
-abstract contract ModuleManager is AccountBase, Receiver {
+abstract contract ModuleManager is Receiver {
     using SentinelListLib for SentinelListLib.SentinelList;
 
     error InvalidModule(address module);

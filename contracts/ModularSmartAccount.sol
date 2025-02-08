@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.23;
 
 import "../interfaces/IERC7579Account.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -19,6 +19,9 @@ contract ModularSmartAccount is
 {
 
     address factory;
+    address entryPointAddr;
+
+    error AccountAccessUnauthorized();
 
     // Error thrown when an unsupported ModuleType is requested
     error UnsupportedModuleType(uint256 moduleTypeId);
@@ -42,11 +45,47 @@ contract ModularSmartAccount is
         _;
     }
 
+    modifier onlyEntryPointOrSelf() virtual {
+        if (!(msg.sender == entryPoint() || msg.sender == address(this))) {
+            revert AccountAccessUnauthorized();
+        }
+        _;
+    }
+
+    modifier onlyEntryPoint() virtual {
+        if (msg.sender != entryPoint()) {
+            revert AccountAccessUnauthorized();
+        }
+        _;
+    }
+
+    function entryPoint() public view virtual returns (address) {
+        return entryPointAddr;
+    }
+
+    /// @dev Sends to the EntryPoint (i.e. `msg.sender`) the missing funds for this transaction.
+    /// Subclass MAY override this modifier for better funds management.
+    /// (e.g. send to the EntryPoint more than the minimum required, so that in future transactions
+    /// it will not be required to send again)
+    ///
+    /// `missingAccountFunds` is the minimum value this modifier should send the EntryPoint,
+    /// which MAY be zero, in case there is enough deposit, or the userOp has a paymaster.
+    modifier payPrefund(uint256 missingAccountFunds) virtual {
+        _;
+        /// @solidity memory-safe-assembly
+        assembly {
+            if missingAccountFunds {
+                // Ignore failure (it's EntryPoint's job to verify, not the account's).
+                pop(call(gas(), caller(), missingAccountFunds, codesize(), 0x00, codesize(), 0x00))
+            }
+        }
+    }
+
     /**
      * @dev Initializes the account. Function might be called directly, or by a Factory
      * @param data. encoded data that can be used during the initialization phase
      */
-    function initializeAccount(bytes calldata data) public payable virtual initializer {
+    function initializeAccount(address _entryPointAddress, bytes calldata data) public payable virtual initializer {
         // protect this function to only be callable when used with the proxy factory or when
         // account calls itself
         if (msg.sender != address(this)) {
@@ -57,6 +96,7 @@ contract ModularSmartAccount is
         _initModuleManager();
 
         factory = msg.sender;
+        entryPointAddr = _entryPointAddress;
 
         // bootstrap the account, if need be
         //(address bootstrap, bytes memory bootstrapCall) = abi.decode(data, (address, bytes));
@@ -70,7 +110,7 @@ contract ModularSmartAccount is
         bytes32 slot = INIT_SLOT;
         // Load the current value from the slot, revert if 0
         assembly {
-            let isInitializable := sload(slot)
+            let isInitializable := tload(slot)
             if iszero(isInitializable) {
                 mstore(0x0, 0xaed59595) // NotInitializable()
                 revert(0x1c, 0x04)

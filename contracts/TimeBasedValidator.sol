@@ -5,11 +5,10 @@ import "../interfaces/IERC7579Account.sol";
 import "../interfaces/IERC7579Module.sol";
 import "../lib/ModeLib.sol";
 import "../lib/ExecutionLib.sol";
-import "./AccountBase.sol";
 import {ECDSA} from "solady/src/utils/ECDSA.sol";
 import "./ModularSmartAccount.sol";
 
-contract TimeBasedValidator is IValidator, AccountBase {
+contract TimeBasedValidator is IValidator {
     using ExecutionLib for bytes;
     using ECDSA for bytes32;
 
@@ -73,7 +72,10 @@ contract TimeBasedValidator is IValidator, AccountBase {
         if (signer != userOp.sender) {
             return VALIDATION_FAILED;
         }
-        _updateLastTxn(userOp.sender);
+         // Only update timestamp when it's an actual transaction
+        if (tx.origin != address(0)) {
+            _updateLastTxn(userOp.sender);
+        }
         return VALIDATION_SUCCESS;
     }
 
@@ -116,7 +118,7 @@ contract TimeBasedValidator is IValidator, AccountBase {
         address sender,
         bytes32 hash,
         bytes calldata signature
-    ) external view override returns (bytes4) {
+    ) external pure override returns (bytes4) {
         bytes4 magic = 0x1626ba7e;
         require(recoverSigner(hash, signature) == sender, "INVALID_SIGNATURE");
         return magic;
