@@ -64,10 +64,6 @@ contract ModularSmartAccount is
     }
 
     /// @dev Sends to the EntryPoint (i.e. `msg.sender`) the missing funds for this transaction.
-    /// Subclass MAY override this modifier for better funds management.
-    /// (e.g. send to the EntryPoint more than the minimum required, so that in future transactions
-    /// it will not be required to send again)
-    ///
     /// `missingAccountFunds` is the minimum value this modifier should send the EntryPoint,
     /// which MAY be zero, in case there is enough deposit, or the userOp has a paymaster.
     modifier payPrefund(uint256 missingAccountFunds) virtual {
@@ -83,11 +79,9 @@ contract ModularSmartAccount is
 
     /**
      * @dev Initializes the account. Function might be called directly, or by a Factory
-     * @param data. encoded data that can be used during the initialization phase
+     * @param _entryPointAddress. address of the entryPoint SC
      */
-    function initializeAccount(address _entryPointAddress, bytes calldata data) public payable virtual initializer {
-        // protect this function to only be callable when used with the proxy factory or when
-        // account calls itself
+    function initializeAccount(address _entryPointAddress) public payable virtual initializer {
         if (msg.sender != address(this)) {
             checkInitializable();
         }
@@ -98,14 +92,14 @@ contract ModularSmartAccount is
         factory = msg.sender;
         entryPointAddr = _entryPointAddress;
 
-        // bootstrap the account, if need be
-        //(address bootstrap, bytes memory bootstrapCall) = abi.decode(data, (address, bytes));
     }
 
+// no idea what this bit does
     bytes32 constant INIT_SLOT = keccak256(
     abi.encode(uint256(keccak256("initializable.transient.msa")) - 1)
 ) & ~bytes32(uint256(0xff));
 
+// no idea what this bit does
     function checkInitializable() internal view {
         bytes32 slot = INIT_SLOT;
         // Load the current value from the slot, revert if 0
@@ -256,6 +250,7 @@ contract ModularSmartAccount is
                 data[20:]
             );
     }
+
 
     function validateUserOp(
         PackedUserOperation memory userOp,

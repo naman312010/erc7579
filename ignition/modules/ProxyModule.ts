@@ -3,10 +3,10 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 const proxyModule = buildModule("ProxyModule", (m) => {
   const proxyAdminOwner = m.getAccount(0);
 
-  const demo = m.contract("Demo");
+  const SA = m.contract("ModularSmartAccount");
 
   const proxy = m.contract("TransparentUpgradeableProxy", [
-    demo,
+    SA,
     proxyAdminOwner,
     "0x",
   ]);
@@ -22,4 +22,12 @@ const proxyModule = buildModule("ProxyModule", (m) => {
   return { proxyAdmin, proxy };
 });
 
-export default proxyModule;
+const SAModule = buildModule("SAModule", (m) => {
+  const { proxy, proxyAdmin } = m.useModule(proxyModule);
+
+  const SA = m.contractAt("ModularSmartAccount", proxy);
+
+  return { SA, proxy, proxyAdmin };
+});
+
+export default SAModule;
